@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机模拟器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            background: #1a1a1a; 
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        #phone {
+            width: 320px;
+            height: 600px;
+            border: 16px solid #333;
+            border-radius: 36px;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+        #screen {
+            width: 100%;
+            height: 100%;
+            background: #121212;
+            position: relative;
+            cursor: pointer;
+        }
+        #status-bar {
+            height: 20px;
+            background: #000;
+            font-size: 12px;
+            padding: 0 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .lock-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-size: 24px;
+        }
+        .lock-tip {
+            margin-top: 50px;
+            font-size: 14px;
+            color: #888;
+        }
+        .home-screen {
+            padding-top: 20px;
+            height: 100%;
+            background: linear-gradient(to bottom, #222, #111);
+        }
+        .app-icon {
+            height: 60px;
+            line-height: 60px;
+            text-align: center;
+            font-size: 18px;
+            border-bottom: 1px solid #333;
+        }
+        .app-screen {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            background: #2a2a2a;
+        }
+        .back-btn {
+            position: absolute;
+            bottom: 20px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        .wallpaper-text {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            text-align: center;
+            font-size: 16px;
+            color: #fff;
+            text-shadow: 0 0 5px #000;
+        }
+        #home-indicator {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 4px;
+            background: #555;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="phone">
+        <div id="screen"></div>
+        <div id="home-indicator"></div>
+    </div>
+
+    <script>
+        class AndroidPico {
+            constructor() {
+                this.screen = "lock";
+                this.current_app = 0;
+                this.lastTouchTime = 0;
+                this.doubleClickThreshold = 300;
+
+                // 这里已经改成：设置、电话、短信、相机、时钟
+                this.apps = ["设置", "电话", "短信", "相机", "时钟"];
+                this.wallpaperText = "祝妹妹新年快乐！";
+                this.battery = 98;
+
+                this.screenEl = document.getElementById('screen');
+                this.screenEl.addEventListener('click', (e) => this.onGlobalClick(e));
+                this.renderUI();
+
+                setInterval(() => {
+                    this.renderUI();
+                }, 1000);
+            }
+
+            getStatusBar() {
+                const now = new Date();
+                const time = now.getHours().toString().padStart(2, '0') + ":" + 
+                             now.getMinutes().toString().padStart(2, '0');
+                return `${time} | 📶 | 🔋${this.battery}%`;
+            }
+
+            openApp(index) {
+                this.current_app = index;
+                this.screen = "app";
+                this.renderUI();
+            }
+
+            goHome() {
+                this.screen = "home";
+                this.renderUI();
+            }
+
+            lockScreen() {
+                this.screen = "lock";
+                this.renderUI();
+            }
+
+            onGlobalClick(e) {
+                const now = Date.now();
+
+                // 双击锁屏
+                if (now - this.lastTouchTime < this.doubleClickThreshold) {
+                    this.lockScreen();
+                    this.lastTouchTime = 0;
+                    return;
+                }
+
+                this.lastTouchTime = now;
+
+                if (this.screen === "lock") {
+                    this.goHome();
+                }
+            }
+
+            renderUI() {
+                let html = '';
+                const statusBar = `<div id="status-bar">${this.getStatusBar()}</div>`;
+
+                switch (this.screen) {
+                    case "lock":
+                        const now = new Date();
+                        const lockTime = now.getHours().toString().padStart(2, '0') + ":" + 
+                                         now.getMinutes().toString().padStart(2, '0');
+                        html = `
+                            <div class="lock-screen">
+                                <div>${lockTime}</div>
+                                <div class="lock-tip">单击解锁 · 双击锁屏</div>
+                                <div class="wallpaper-text">${this.wallpaperText}</div>
+                            </div>
+                        `;
+                        break;
+
+                    case "home":
+                        html = `
+                            ${statusBar}
+                            <div class="home-screen">
+                                <div class="app-icon" onclick="pico.openApp(0)">设置</div>
+                                <div class="app-icon" onclick="pico.openApp(1)">电话</div>
+                                <div class="app-icon" onclick="pico.openApp(2)">短信</div>
+                                <div class="app-icon" onclick="pico.openApp(3)">相机</div>
+                                <div class="app-icon" onclick="pico.openApp(4)">时钟</div>
+                                <div class="wallpaper-text">${this.wallpaperText}</div>
+                            </div>
+                        `;
+                        break;
+
+                    case "app":
+                        html = `
+                            ${statusBar}
+                            <div class="app-screen" onclick="pico.goHome()">
+                                <div>${this.apps[this.current_app]}</div>
+                                <div class="back-btn">点击返回</div>
+                            </div>
+                        `;
+                        break;
+                }
+
+                this.screenEl.innerHTML = html;
+            }
+        }
+
+        let pico;
+        window.onload = () => {
+            pico = new AndroidPico();
+        };
+    </script>
+</body>
+</html>
